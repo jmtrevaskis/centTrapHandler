@@ -1,0 +1,32 @@
+63a64,69
+> # By James Trevaskis - 8/12/2012
+> # Skip "Unknown (3)" status on Passive Services
+> # Used for preventing any matched advanced regex matches traps from triggering service state changes
+> my $cust_unknownSkipEnable = 1;
+> 
+> 	
+335,336c341,347
+< 		  	# No matching rules
+< 		 	my $id = get_hostNagiosServerID($dbh, $this_host);
+---
+> 		# No matching rules
+> 		my $id = get_hostNagiosServerID($dbh, $this_host);
+>                 my $timestamp = scalar localtime($datetime);
+>                 if ($this_service =~ /_LOG/) {
+>                     my $myLog1 = "/bin/echo $timestamp - Host: $this_host - Service: $this_service - Status: $status - Args:$arguments_line >> /var/log/snmp/snmptrap_logging.log";
+> 	            send_command($myLog1);  		  
+>                 }                    
+338,340c349,357
+< 	        	my $submit = "/bin/echo \"EXTERNALCMD:$id:[$datetime] PROCESS_SERVICE_CHECK_RESULT;$this_host;$this_service;$status;$arguments_line\" >> $cmdFile";
+< 	          	send_command($submit);
+< 	          	undef($id);
+---
+>                   if ($this_service =~ /_LOG/ && $status == 3 && $cust_unknownSkipEnable == 1) {
+> 		    # skip the passive service with status unknown for traps you dont want to change service status
+>                     my $myLog2 = "/bin/echo $timestamp - Host: $this_host - Service: $this_service - Status: $status - Args:$arguments_line >> /var/log/snmp/snmptrap_ignored.log";
+>                     send_command($myLog2);
+>                   } else {
+> 	            my $submit = "/bin/echo \"EXTERNALCMD:$id:[$datetime] PROCESS_SERVICE_CHECK_RESULT;$this_host;$this_service;$status;$arguments_line\" >> $cmdFile";
+> 	            send_command($submit);
+> 	            undef($id);
+>                   }
